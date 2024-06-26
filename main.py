@@ -4,11 +4,12 @@ import datetime
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, QPushButton,
                              QTableWidget, QTableWidgetItem, QMessageBox, QTabWidget)
 
+
 class BookManager(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("图书管理系统")
-        self.resize(1000,800)
+        self.resize(1000, 800)
         self.db = database.DatabaseManager()
         self.initUI()
 
@@ -112,17 +113,14 @@ class BookManager(QWidget):
         self.record_table.setColumnCount(5)
         self.record_table.setHorizontalHeaderLabels(["ID", "书名", "借阅人", "借阅日期", "归还日期"])
         self.record_table.setSelectionBehavior(QTableWidget.SelectRows)
-        #self.record_table.cellClicked.connect(self.fill_record_form)
 
         form_layout = QFormLayout()
         self.record_book_id_input = QLineEdit()
         self.record_borrower_id_input = QLineEdit()
-        self.record_borrow_date_input = QLineEdit()
-        self.record_return_date_input = QLineEdit()
+        self.record_borrow_days_input = QLineEdit()
         form_layout.addRow("书籍:", self.record_book_id_input)
         form_layout.addRow("借阅人:", self.record_borrower_id_input)
-        form_layout.addRow("借阅日期:", self.record_borrow_date_input)
-        form_layout.addRow("归还日期:", self.record_return_date_input)
+        form_layout.addRow("借阅时长（天）:", self.record_borrow_days_input)
 
         button_layout = QHBoxLayout()
         add_button = QPushButton("添加")
@@ -326,6 +324,7 @@ class BookManager(QWidget):
                 self.borrower_table.setItem(row_idx, 2, QTableWidgetItem(borrower[2]))
         except Exception as e:
             QMessageBox.critical(self, '错误', f'查询借阅人失败: {e}')
+
     def delete_borrower(self):
         """删除借阅人"""
         selected_row = self.borrower_table.currentRow()
@@ -377,21 +376,19 @@ class BookManager(QWidget):
         """添加借阅记录"""
         book_id = self.record_book_id_input.text().strip()
         borrower_id = self.record_borrower_id_input.text().strip()
-        borrow_date = self.record_borrow_date_input.text().strip()
-        return_date = self.record_return_date_input.text().strip()
+        borrow_date = datetime.date.today().strftime("%Y-%m-%d")
+        days = self.record_borrow_days_input.text().strip()
+        if not days.isdigit():
+            QMessageBox.warning(self, '错误', '借阅时间应为一个整数')
+            return
+        return_date = (datetime.date.today() + datetime.timedelta(days=int(days))).strftime("%Y-%m-%d")
 
-        if not book_id or not borrower_id or not borrow_date:
-            QMessageBox.warning(self, '错误', '书籍ID、借阅人ID和借阅日期为必填项。')
+        if not book_id or not borrower_id or not days:
+            QMessageBox.warning(self, '错误', '书籍ID、借阅人ID和借阅时长为必填项。')
             return
 
         if not book_id.isdigit() or not borrower_id.isdigit():
             QMessageBox.warning(self, '错误', '书籍ID、借阅人ID应为纯数字。')
-            return
-        try:
-            borrow_date = datetime.strptime(borrow_date, '%Y-%m-%d').date()
-            return_date = datetime.strptime(return_date, '%Y-%m-%d').date() if return_date else None
-        except ValueError:
-            QMessageBox.warning(self, '错误', '日期格式应为 YYYY-MM-DD。')
             return
 
         try:
@@ -401,39 +398,6 @@ class BookManager(QWidget):
             self.load_borrow_records()
         except Exception as e:
             QMessageBox.critical(self, '错误', f'添加借阅记录失败: {e}')
-
-
-    def update_borrow_record(self):
-        #更新借阅记录
-        selected_row = self.record_table.currentRow()
-        if selected_row < 0:
-            QMessageBox.warning(self, '错误', '请选择要更新的借阅记录。')
-            return
-
-        record_id = self.record_table.item(selected_row, 0).text()
-        book_id = self.record_book_id_input.text().strip()  # 获取书籍ID输入框的文本
-        borrower_id = self.record_borrower_id_input.text().strip()  # 获取借阅人ID输入框的文本
-        borrow_date = self.record_borrow_date_input.text().strip()
-        return_date = self.record_return_date_input.text().strip()
-
-        if not book_id or not borrower_id or not borrow_date:
-            QMessageBox.warning(self, '错误', '书籍ID、借阅人ID和借阅日期为必填项。')
-            return
-
-        try:
-            borrow_date = datetime.strptime(borrow_date, '%Y-%m-%d').date()
-            return_date = datetime.strptime(return_date, '%Y-%m-%d').date() if return_date else None
-        except ValueError:
-            QMessageBox.warning(self, '错误', '日期格式应为 YYYY-MM-DD。')
-            return
-
-        try:
-            self.db.update_borrow_record(record_id, book_id, borrower_id, borrow_date, return_date)
-            QMessageBox.information(self, '成功', '借阅记录更新成功！')
-            self.clear_record_form()
-            self.load_borrow_records()
-        except Exception as e:
-            QMessageBox.critical(self, '错误', f'更新借阅记录失败: {e}')
 
     def delete_borrow_record(self):
         """删除借阅记录"""
@@ -456,25 +420,7 @@ class BookManager(QWidget):
         """清空借阅记录表单"""
         self.record_book_id_input.clear()
         self.record_borrower_id_input.clear()
-        self.record_borrow_date_input.clear()
-        self.record_return_date_input.clear()
-
-    def fill_record_form(self):
-        """填充借阅记录表单"""
-        selected_row = self.record_table.currentRow()
-        if selected_row < 0:
-            return
-
-        record_id = self.record_table.item(selected_row, 0).text()
-        book_id = self.record_table.item(selected_row, 1).text()  # 使用书籍ID而不是书名
-        borrower_id = self.record_table.item(selected_row, 2).text()  # 使用借阅人ID而不是姓名
-        borrow_date = self.record_table.item(selected_row, 3).text()
-        return_date = self.record_table.item(selected_row, 4).text()
-
-        self.record_book_id_input.setText(book_id)
-        self.record_borrower_id_input.setText(borrower_id)
-        self.record_borrow_date_input.setText(borrow_date)
-        self.record_return_date_input.setText(return_date)
+        self.record_borrow_days_input.clear()
 
     def load_borrow_records(self):
         """加载所有借阅记录"""
@@ -489,6 +435,7 @@ class BookManager(QWidget):
                 self.record_table.setItem(row_idx, 4, QTableWidgetItem(str(record[4]) if record[4] else ""))
         except Exception as e:
             QMessageBox.critical(self, '错误', f'加载借阅记录失败: {e}')
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
