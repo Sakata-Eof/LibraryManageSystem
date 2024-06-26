@@ -83,13 +83,16 @@ class BookManager(QWidget):
         button_layout = QHBoxLayout()
         add_button = QPushButton("添加")
         update_button = QPushButton("更新")
+        search_button = QPushButton("查询")
         delete_button = QPushButton("删除")
         button_layout.addWidget(add_button)
         button_layout.addWidget(update_button)
+        button_layout.addWidget(search_button)
         button_layout.addWidget(delete_button)
 
         add_button.clicked.connect(self.add_borrower)
         update_button.clicked.connect(self.update_borrower)
+        search_button.clicked.connect(self.search_borrower)
         delete_button.clicked.connect(self.delete_borrower)
 
         layout = QVBoxLayout()
@@ -116,8 +119,8 @@ class BookManager(QWidget):
         self.record_borrower_id_input = QLineEdit()
         self.record_borrow_date_input = QLineEdit()
         self.record_return_date_input = QLineEdit()
-        form_layout.addRow("书籍ID:", self.record_book_id_input)
-        form_layout.addRow("借阅人ID:", self.record_borrower_id_input)
+        form_layout.addRow("书籍:", self.record_book_id_input)
+        form_layout.addRow("借阅人:", self.record_borrower_id_input)
         form_layout.addRow("借阅日期:", self.record_borrow_date_input)
         form_layout.addRow("归还日期:", self.record_return_date_input)
 
@@ -310,6 +313,19 @@ class BookManager(QWidget):
         except Exception as e:
             QMessageBox.critical(self, '错误', f'更新借阅人失败: {e}')
 
+    def search_borrower(self):
+        """查询借阅人信息"""
+        name = self.borrower_name_input.text().strip()
+        email = self.borrower_email_input.text().strip()
+        try:
+            borrowers = self.db.search_borrower(name, email)
+            self.borrower_table.setRowCount(len(borrowers))
+            for row_idx, borrower in enumerate(borrowers):
+                self.borrower_table.setItem(row_idx, 0, QTableWidgetItem(str(borrower[0])))
+                self.borrower_table.setItem(row_idx, 1, QTableWidgetItem(borrower[1]))
+                self.borrower_table.setItem(row_idx, 2, QTableWidgetItem(borrower[2]))
+        except Exception as e:
+            QMessageBox.critical(self, '错误', f'查询借阅人失败: {e}')
     def delete_borrower(self):
         """删除借阅人"""
         selected_row = self.borrower_table.currentRow()

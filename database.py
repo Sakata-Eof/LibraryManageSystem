@@ -1,12 +1,10 @@
 import psycopg2
 
 
-
-
-
 class DatabaseManager:
     def __init__(self):
-        self.connection = psycopg2.connect(database="db_tpcc", user="joe", password="Bigdata@123", host="139.9.139.6", port=26000)
+        self.connection = psycopg2.connect(database="db_tpcc", user="joe", password="Bigdata@123", host="139.9.139.6",
+                                           port=26000)
         self.create_tables()
 
     def create_tables(self):
@@ -107,6 +105,21 @@ class DatabaseManager:
             ''', (name, email, borrower_id))
             self.connection.commit()
 
+    def search_borrower(self, name=None, email=None):
+        """查询借阅人"""
+        with self.connection.cursor() as cursor:
+            query = "SELECT * FROM borrowers WHERE TRUE"
+            params = []
+
+            if name:
+                query += " AND name ILIKE %s"
+                params.append(f"%{name}%")
+            if email:
+                query += " AND email ILIKE %s"
+                params.append(f"%{email}%")
+            cursor.execute(query, params)
+            return cursor.fetchall()
+
     def delete_borrower(self, borrower_id):
         """删除借阅人"""
         with self.connection.cursor() as cursor:
@@ -157,4 +170,3 @@ class DatabaseManager:
                 JOIN borrowers bw ON br.borrower_id = bw.id;
             ''')
             return cursor.fetchall()
-
