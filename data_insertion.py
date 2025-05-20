@@ -1,6 +1,7 @@
 import random
 from faker import Faker
 import database
+# 向表中随机填入数据
 # 初始化Faker实例，并设置为中文
 fake = Faker('zh_CN')
 
